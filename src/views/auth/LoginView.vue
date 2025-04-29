@@ -1,8 +1,7 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { signInWithEmailAndPassword, browserLocalPersistence, setPersistence } from 'firebase/auth';
-import { auth } from '../../firebase/config';
+import { signInWithEmailAndPassword } from '../../services/localAuth';
 import { handleAuthError, logError } from '../../services/errorLogger';
 
 const email = ref('');
@@ -11,21 +10,6 @@ const errorMessage = ref('');
 const detailedError = ref('');
 const loading = ref(false);
 const router = useRouter();
-
-// Set up persistence on component mount
-onMounted(async () => {
-  try {
-    // Set persistence to LOCAL (browser persistence)
-    await setPersistence(auth, browserLocalPersistence);
-    console.info('[LOGIN] Firebase persistence set to LOCAL');
-  } catch (error) {
-    console.error('[LOGIN] Error setting persistence:', error);
-    // Log the error but don't show to user as it's not critical for login UI
-    logError(error, 'login-persistence-setup', {
-      timestamp: new Date().toISOString()
-    });
-  }
-});
 
 const login = async () => {
   // Reset error messages
@@ -51,64 +35,37 @@ const login = async () => {
     loading.value = true;
 
     // Log login attempt (without sensitive data)
-    console.info(`[LOGIN] Attempt for email: ${email.value.substring(0, 3)}...`);
+    console.info(`[LOGIN] Attempt for email: ${email.value}`);
 
     // Add a timestamp for debugging
     const startTime = new Date().getTime();
 
-    try {
-      // Attempt to sign in
-      const userCredential = await signInWithEmailAndPassword(auth, email.value, password.value);
+    // Attempt to sign in with local auth service
+    const userCredential = await signInWithEmailAndPassword(email.value, password.value);
 
-      // Calculate response time for performance monitoring
-      const responseTime = new Date().getTime() - startTime;
+    // Calculate response time for performance monitoring
+    const responseTime = new Date().getTime() - startTime;
 
-      // Log successful login with timing information
-      console.info(`[LOGIN] Success for email: ${email.value.substring(0, 3)}... (${responseTime}ms)`);
-      console.info(`[LOGIN] User info:`, {
-        uid: userCredential.user.uid,
-        emailVerified: userCredential.user.emailVerified,
-        displayName: userCredential.user.displayName || 'Not set'
-      });
+    // Log successful login
+    console.info(`[LOGIN] Success for user: ${userCredential.user.uid} (${responseTime}ms)`);
+    console.info(`[LOGIN] User info:`, {
+      uid: userCredential.user.uid,
+      displayName: userCredential.user.displayName || 'Not set'
+    });
 
-      // Redirect to dashboard
-      router.push('/dashboard');
-    } catch (firebaseError) {
-      // Get detailed error information
-      const errorDetails = {
-        code: firebaseError.code,
-        message: firebaseError.message,
-        name: firebaseError.name,
-        stack: firebaseError.stack,
-        email: email.value,
-        timestamp: new Date().toISOString()
-      };
-
-      // Log detailed error for debugging
-      console.error('[LOGIN] Firebase authentication error:', errorDetails);
-
-      // Store detailed error for debugging (only in development)
-      if (process.env.NODE_ENV !== 'production') {
-        detailedError.value = `Error Code: ${errorDetails.code}\nMessage: ${errorDetails.message}`;
-      }
-
-      // Use the error handler service to get a user-friendly message
-      errorMessage.value = handleAuthError(firebaseError, 'login', {
-        email: email.value,
-        attemptTime: new Date().toISOString()
-      });
-
-      // Throw the error to be caught by the outer try-catch
-      throw firebaseError;
-    }
+    // Redirect to dashboard
+    router.push('/dashboard');
   } catch (error) {
-    // This catch block handles any errors not caught by the inner try-catch
-    console.error('[LOGIN] Unexpected error during login process:', error);
+    console.error('[LOGIN] Error during login:', error);
 
-    // If we don't already have an error message, set a generic one
-    if (!errorMessage.value) {
-      errorMessage.value = 'An unexpected error occurred during login. Please try again.';
-    }
+    // Store detailed error for debugging
+    detailedError.value = `Error Code: ${error.code || 'unknown'}\nMessage: ${error.message || 'No message available'}`;
+
+    // Use the error handler service to get a user-friendly message
+    errorMessage.value = handleAuthError(error, 'login', {
+      email: email.value,
+      attemptTime: new Date().toISOString()
+    });
   } finally {
     loading.value = false;
   }

@@ -9,6 +9,7 @@ const Register = () => import('../views/auth/RegisterView.vue');
 const ForgotPassword = () => import('../views/auth/ForgotPasswordView.vue');
 const Dashboard = () => import('../views/dashboard/DashboardView.vue');
 const Home = () => import('../views/HomeView.vue');
+const Test = () => import('../views/TestView.vue');
 
 const routes = [
   {
@@ -47,12 +48,26 @@ const routes = [
     meta: {
       requiresAuth: true
     }
+  },
+  // Catch-all route for 404 errors
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/'
   }
 ];
 
 const router = createRouter({
   history: createWebHistory(),
   routes
+});
+
+// Global auth state
+let currentUser = null;
+
+// Set up auth state listener
+onAuthStateChanged(auth, (user) => {
+  currentUser = user;
+  console.info(`[AUTH] Auth state changed: ${user ? 'User logged in' : 'User logged out'}`);
 });
 
 // Navigation guard for authentication
@@ -64,34 +79,21 @@ router.beforeEach((to, from, next) => {
   console.info(`[ROUTER] Navigation to: ${to.path} (requiresAuth: ${requiresAuth}, requiresGuest: ${requiresGuest})`);
 
   try {
-    // Check if the user is authenticated
-    onAuthStateChanged(auth, (user) => {
-      if (requiresAuth && !user) {
-        // Log unauthorized access attempt
-        console.warn(`[ROUTER] Unauthorized access attempt to: ${to.path}`);
-        next('/login');
-      } else if (requiresGuest && user) {
-        // Log authenticated user trying to access guest-only route
-        console.info(`[ROUTER] Authenticated user (${user.uid}) redirected from guest-only route: ${to.path}`);
-        next('/dashboard');
-      } else {
-        // Log successful navigation
-        const userStatus = user ? `authenticated (${user.uid})` : 'unauthenticated';
-        console.info(`[ROUTER] Navigation permitted for ${userStatus} user to: ${to.path}`);
-        next();
-      }
-    }, (error) => {
-      // Log auth state error
-      logError(error, 'router-auth-check', {
-        destination: to.path,
-        requiresAuth,
-        requiresGuest
-      });
-
-      // Default to login page on error
-      console.error(`[ROUTER] Auth check error, redirecting to login`);
+    // Simple synchronous check based on current auth state
+    if (requiresAuth && !currentUser) {
+      // Log unauthorized access attempt
+      console.warn(`[ROUTER] Unauthorized access attempt to: ${to.path}`);
       next('/login');
-    });
+    } else if (requiresGuest && currentUser) {
+      // Log authenticated user trying to access guest-only route
+      console.info(`[ROUTER] Authenticated user redirected from guest-only route: ${to.path}`);
+      next('/dashboard');
+    } else {
+      // Log successful navigation
+      const userStatus = currentUser ? 'authenticated' : 'unauthenticated';
+      console.info(`[ROUTER] Navigation permitted for ${userStatus} user to: ${to.path}`);
+      next();
+    }
   } catch (error) {
     // Log any unexpected errors in the navigation guard
     logError(error, 'router-navigation-guard', {
@@ -99,8 +101,9 @@ router.beforeEach((to, from, next) => {
       source: from.path
     });
 
-    // Default to login page on error
-    next('/login');
+    // Default to home page on error
+    console.error(`[ROUTER] Navigation guard error, redirecting to home`);
+    next('/');
   }
 });
 

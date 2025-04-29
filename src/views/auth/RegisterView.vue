@@ -1,8 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { auth } from '../../firebase/config';
+import { registerUser, updateProfile } from '../../services/localAuth';
 import { handleAuthError, logError } from '../../services/errorLogger';
 
 const name = ref('');
@@ -66,23 +65,18 @@ const register = async () => {
     // Log registration attempt
     console.info(`[REGISTER] Attempt for email: ${email.value}`);
 
-    // Create user with email and password
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
+    // Create user with email and password using local auth service
+    const user = await registerUser(
       email.value,
-      password.value
+      password.value,
+      name.value
     );
 
     // Log successful user creation
-    console.info(`[REGISTER] User created with UID: ${userCredential.user.uid}`);
-
-    // Update user profile with name
-    await updateProfile(userCredential.user, {
-      displayName: name.value
-    });
+    console.info(`[REGISTER] User created with UID: ${user.uid}`);
 
     // Log profile update
-    console.info(`[REGISTER] Profile updated for user: ${userCredential.user.uid}`);
+    console.info(`[REGISTER] Profile updated for user: ${user.uid}`);
 
     // Redirect to dashboard
     router.push('/dashboard');
