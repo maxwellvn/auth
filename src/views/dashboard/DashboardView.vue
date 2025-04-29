@@ -1,8 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../../firebase/config';
+import { signOut, onAuthStateChanged } from '../../services/localAuth';
 import { handleAuthError, logError } from '../../services/errorLogger';
 
 const user = ref(null);
@@ -15,7 +14,7 @@ onMounted(() => {
   console.info('[DASHBOARD] Component mounted, checking authentication state');
 
   // Subscribe to auth state changes
-  const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+  const unsubscribe = onAuthStateChanged((currentUser) => {
     if (currentUser) {
       // Log successful authentication
       console.info(`[DASHBOARD] User authenticated: ${currentUser.uid}`);
@@ -55,8 +54,8 @@ const handleLogout = async () => {
     // Log logout attempt
     console.info('[LOGOUT] Attempt');
 
-    // Sign out
-    await signOut(auth);
+    // Sign out using local auth service
+    await signOut();
 
     // Log successful logout
     console.info('[LOGOUT] Success');

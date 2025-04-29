@@ -30,8 +30,8 @@ const resetPassword = async () => {
     // Log password reset attempt (without sensitive data)
     console.info(`[PASSWORD-RESET] Attempt for email: ${email.value.substring(0, 3)}...`);
 
-    // Send password reset email
-    await sendPasswordResetEmail(auth, email.value);
+    // Send password reset email using local auth service
+    await sendPasswordResetEmail(email.value);
 
     // Log successful password reset request
     console.info(`[PASSWORD-RESET] Reset email sent successfully to: ${email.value.substring(0, 3)}...`);

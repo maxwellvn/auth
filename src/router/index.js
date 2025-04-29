@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { auth } from '../firebase/config';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged } from '../services/localAuth';
 import { logError } from '../services/errorLogger';
 
 // Route components
@@ -9,7 +8,6 @@ const Register = () => import('../views/auth/RegisterView.vue');
 const ForgotPassword = () => import('../views/auth/ForgotPasswordView.vue');
 const Dashboard = () => import('../views/dashboard/DashboardView.vue');
 const Home = () => import('../views/HomeView.vue');
-const Test = () => import('../views/TestView.vue');
 
 const routes = [
   {
@@ -65,7 +63,7 @@ const router = createRouter({
 let currentUser = null;
 
 // Set up auth state listener
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged((user) => {
   currentUser = user;
   console.info(`[AUTH] Auth state changed: ${user ? 'User logged in' : 'User logged out'}`);
 });
