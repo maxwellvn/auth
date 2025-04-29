@@ -1,7 +1,7 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, browserLocalPersistence, setPersistence } from 'firebase/auth';
 import { auth } from '../../firebase/config';
 import { handleAuthError, logError } from '../../services/errorLogger';
 
@@ -143,7 +143,7 @@ const login = async () => {
             type="password"
             id="password"
             v-model="password"
-            placeholder="Enter your ypassword"
+            placeholder="Enter your password"
             required
           />
         </div>
@@ -241,19 +241,6 @@ input {
   border-top: 1px dashed #e3a0a5;
   font-size: 0.85rem;
 }
-
-.detailed-error pre {
-  margin-top: 0.5rem;
-  white-space: pre-wrap;
-  word-break: break-all;
-  background-color: rgba(0, 0, 0, 0.05);
-  padding: 0.5rem;
-  border-radius: 3px;
-  max-height: 150px;
-  overflow-y: auto;
-}
-  border-top: 1px dashed #e3a0a5;
-  font-size: 0.85rem;
 
 .detailed-error pre {
   margin-top: 0.5rem;
