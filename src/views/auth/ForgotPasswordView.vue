@@ -1,7 +1,6 @@
 <script setup>
 import { ref } from 'vue';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../../firebase/config';
+import { sendPasswordResetEmail } from '../../services/localAuth';
 import { handleAuthError, logError } from '../../services/errorLogger';
 
 const email = ref('');
