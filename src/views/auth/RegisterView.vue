@@ -3,66 +3,102 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth } from '../../firebase/config';
+import { handleAuthError, logError } from '../../services/errorLogger';
 
 const name = ref('');
 const email = ref('');
 const password = ref('');
 const confirmPassword = ref('');
 const errorMessage = ref('');
+const detailedError = ref('');
 const loading = ref(false);
 const router = useRouter();
 
 const register = async () => {
-  // Reset error message
+  // Reset error messages
   errorMessage.value = '';
-  
+  detailedError.value = '';
+
   // Validate form
-  if (!name.value || !email.value || !password.value || !confirmPassword.value) {
+  const validationErrors = [];
+
+  if (!name.value) validationErrors.push('name');
+  if (!email.value) validationErrors.push('email');
+  if (!password.value) validationErrors.push('password');
+  if (!confirmPassword.value) validationErrors.push('confirmPassword');
+
+  if (validationErrors.length > 0) {
     errorMessage.value = 'Please fill in all fields';
+    // Log validation error
+    logError(
+      new Error('Registration form validation failed'),
+      'register-validation',
+      { missingFields: validationErrors }
+    );
     return;
   }
-  
+
   if (password.value !== confirmPassword.value) {
     errorMessage.value = 'Passwords do not match';
+    // Log password mismatch
+    logError(
+      new Error('Password mismatch'),
+      'register-validation',
+      { passwordLength: password.value.length }
+    );
     return;
   }
-  
+
   if (password.value.length < 6) {
     errorMessage.value = 'Password must be at least 6 characters';
+    // Log password length error
+    logError(
+      new Error('Password too short'),
+      'register-validation',
+      { passwordLength: password.value.length }
+    );
     return;
   }
-  
+
   try {
     loading.value = true;
+
+    // Log registration attempt
+    console.info(`[REGISTER] Attempt for email: ${email.value}`);
+
     // Create user with email and password
     const userCredential = await createUserWithEmailAndPassword(
-      auth, 
-      email.value, 
+      auth,
+      email.value,
       password.value
     );
-    
+
+    // Log successful user creation
+    console.info(`[REGISTER] User created with UID: ${userCredential.user.uid}`);
+
     // Update user profile with name
     await updateProfile(userCredential.user, {
       displayName: name.value
     });
-    
+
+    // Log profile update
+    console.info(`[REGISTER] Profile updated for user: ${userCredential.user.uid}`);
+
     // Redirect to dashboard
     router.push('/dashboard');
   } catch (error) {
-    console.error('Registration error:', error);
-    switch (error.code) {
-      case 'auth/email-already-in-use':
-        errorMessage.value = 'Email is already in use';
-        break;
-      case 'auth/invalid-email':
-        errorMessage.value = 'Invalid email address';
-        break;
-      case 'auth/weak-password':
-        errorMessage.value = 'Password is too weak';
-        break;
-      default:
-        errorMessage.value = 'An error occurred during registration. Please try again';
-    }
+    console.error('[REGISTER] Error during registration:', error);
+
+    // Store detailed error for debugging
+    detailedError.value = `Error Code: ${error.code || 'unknown'}\nMessage: ${error.message || 'No message available'}`;
+
+    // Use the error handler service to get a user-friendly message
+    errorMessage.value = handleAuthError(error, 'register', {
+      email: email.value,
+      nameProvided: !!name.value,
+      passwordLength: password.value.length,
+      attemptTime: new Date().toISOString()
+    });
   } finally {
     loading.value = false;
   }
@@ -75,44 +111,48 @@ const register = async () => {
       <h1>Register</h1>
       <div v-if="errorMessage" class="error-message">
         {{ errorMessage }}
+        <div v-if="detailedError" class="detailed-error">
+          <strong>Technical Details (for debugging):</strong>
+          <pre>{{ detailedError }}</pre>
+        </div>
       </div>
       <form @submit.prevent="register">
         <div class="form-group">
           <label for="name">Name</label>
-          <input 
-            type="text" 
-            id="name" 
-            v-model="name" 
+          <input
+            type="text"
+            id="name"
+            v-model="name"
             placeholder="Enter your name"
             required
           />
         </div>
         <div class="form-group">
           <label for="email">Email</label>
-          <input 
-            type="email" 
-            id="email" 
-            v-model="email" 
+          <input
+            type="email"
+            id="email"
+            v-model="email"
             placeholder="Enter your email"
             required
           />
         </div>
         <div class="form-group">
           <label for="password">Password</label>
-          <input 
-            type="password" 
-            id="password" 
-            v-model="password" 
+          <input
+            type="password"
+            id="password"
+            v-model="password"
             placeholder="Enter your password"
             required
           />
         </div>
         <div class="form-group">
           <label for="confirmPassword">Confirm Password</label>
-          <input 
-            type="password" 
-            id="confirmPassword" 
-            v-model="confirmPassword" 
+          <input
+            type="password"
+            id="confirmPassword"
+            v-model="confirmPassword"
             placeholder="Confirm your password"
             required
           />
@@ -202,6 +242,24 @@ input {
   padding: 0.75rem;
   border-radius: 4px;
   margin-bottom: 1.5rem;
+}
+
+.detailed-error {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed #e3a0a5;
+  font-size: 0.85rem;
+}
+
+.detailed-error pre {
+  margin-top: 0.5rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 0.5rem;
+  border-radius: 3px;
+  max-height: 150px;
+  overflow-y: auto;
 }
 
 .auth-links {

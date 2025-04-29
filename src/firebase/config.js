@@ -1,8 +1,8 @@
-// Firebase configuration
-import { initializeApp } from 'firebase/app';
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
 import { getAuth } from 'firebase/auth';
 
-// Firebase configuration provided by the user
+// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCNRTvpG9gmIllvnee5PJ2iGUIKbNp6rXs",
   authDomain: "gpdadmin-6591c.firebaseapp.com",

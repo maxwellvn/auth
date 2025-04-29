@@ -57,6 +57,22 @@ const authErrorMessages = {
   'auth/missing-app-config-values': 'An internal error has occurred.',
   'auth/invalid-app-config': 'An internal error has occurred.',
   'auth/invalid-app-config-values': 'An internal error has occurred.',
+
+  // Configuration errors
+  'auth/configuration-not-found': 'Firebase authentication configuration not found. This may be due to a misconfiguration or the Firebase project may not exist. Please contact support.',
+  'auth/app-deleted': 'The Firebase app has been deleted. Please contact support.',
+  'auth/app-not-authorized': 'This app is not authorized to use Firebase Authentication. Please contact support.',
+  'auth/argument-error': 'An invalid argument was provided to the Firebase Authentication method.',
+  'auth/invalid-api-key': 'The Firebase API key is invalid. Please contact support.',
+  'auth/invalid-app-name': 'The Firebase app name is invalid. Please contact support.',
+  'auth/invalid-user-token': 'The user\'s credential is no longer valid. Please log in again.',
+  'auth/invalid-auth-event': 'An internal authentication error has occurred.',
+  'auth/invalid-cert-hash': 'The SHA-1 certificate hash provided is invalid.',
+  'auth/invalid-persistence-type': 'The specified persistence type is invalid.',
+  'auth/invalid-oauth-provider': 'The specified OAuth provider is invalid.',
+  'auth/invalid-oauth-client-id': 'The OAuth client ID provided is invalid.',
+  'auth/unauthorized-domain': 'This domain is not authorized for OAuth operations.',
+  'auth/web-storage-unsupported': 'Web storage is not supported or is disabled in this browser.',
   'auth/invalid-oauth-client-id': 'The OAuth client ID is invalid.',
   'auth/invalid-oauth-provider': 'The OAuth provider is invalid.',
   'auth/invalid-oauth-scope': 'The OAuth scope is invalid.',
@@ -113,7 +129,7 @@ const DEFAULT_ERROR_MESSAGE = 'An unexpected error occurred. Please try again.';
 
 /**
  * Log an error to the console with additional context
- * 
+ *
  * @param {Error} error - The error object
  * @param {string} context - The context where the error occurred (e.g., 'login', 'register')
  * @param {Object} additionalData - Any additional data to log with the error
@@ -128,19 +144,19 @@ export const logError = (error, context, additionalData = {}) => {
     stack: error.stack,
     ...additionalData
   };
-  
+
   // Log to console in development
   console.error(`[${context.toUpperCase()}] Error:`, errorLog);
-  
+
   // In a production app, you might want to send this to a logging service
   // Example: sendToLoggingService(errorLog);
-  
+
   return errorLog;
 };
 
 /**
  * Get a user-friendly error message for Firebase auth errors
- * 
+ *
  * @param {Error} error - The Firebase auth error
  * @returns {string} - User-friendly error message
  */
@@ -148,13 +164,13 @@ export const getAuthErrorMessage = (error) => {
   if (!error || !error.code) {
     return DEFAULT_ERROR_MESSAGE;
   }
-  
+
   return authErrorMessages[error.code] || DEFAULT_ERROR_MESSAGE;
 };
 
 /**
  * Handle authentication errors with logging and user-friendly messages
- * 
+ *
  * @param {Error} error - The error object
  * @param {string} context - The context where the error occurred
  * @param {Object} additionalData - Any additional data to log with the error
@@ -163,7 +179,7 @@ export const getAuthErrorMessage = (error) => {
 export const handleAuthError = (error, context, additionalData = {}) => {
   // Log the error
   logError(error, context, additionalData);
-  
+
   // Return a user-friendly message
   return getAuthErrorMessage(error);
 };

@@ -3,32 +3,73 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../../firebase/config';
+import { handleAuthError, logError } from '../../services/errorLogger';
 
 const user = ref(null);
 const loading = ref(true);
+const errorMessage = ref('');
 const router = useRouter();
 
 onMounted(() => {
-  onAuthStateChanged(auth, (currentUser) => {
+  // Log dashboard mount
+  console.info('[DASHBOARD] Component mounted, checking authentication state');
+
+  // Subscribe to auth state changes
+  const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
     if (currentUser) {
+      // Log successful authentication
+      console.info(`[DASHBOARD] User authenticated: ${currentUser.uid}`);
+
+      // Set user data
       user.value = {
         uid: currentUser.uid,
         email: currentUser.email,
-        displayName: currentUser.displayName || 'User'
+        displayName: currentUser.displayName || 'User',
+        emailVerified: currentUser.emailVerified,
+        lastLoginAt: currentUser.metadata?.lastSignInTime || 'Unknown'
       };
     } else {
+      // Log unauthenticated access attempt
+      console.warn('[DASHBOARD] Unauthenticated access attempt, redirecting to login');
       router.push('/login');
     }
     loading.value = false;
+  }, (error) => {
+    // Handle auth state change error
+    const errorMsg = handleAuthError(error, 'dashboard-auth-state', {
+      timestamp: new Date().toISOString()
+    });
+    errorMessage.value = errorMsg;
+    loading.value = false;
   });
+
+  // Clean up subscription on component unmount
+  return () => {
+    console.info('[DASHBOARD] Component unmounting, cleaning up auth subscription');
+    unsubscribe();
+  };
 });
 
 const handleLogout = async () => {
   try {
+    // Log logout attempt
+    console.info('[LOGOUT] Attempt');
+
+    // Sign out
     await signOut(auth);
+
+    // Log successful logout
+    console.info('[LOGOUT] Success');
+
+    // Redirect to login
     router.push('/login');
   } catch (error) {
-    console.error('Logout error:', error);
+    // Handle logout error
+    const errorMsg = handleAuthError(error, 'logout', {
+      userId: user.value?.uid,
+      timestamp: new Date().toISOString()
+    });
+    errorMessage.value = errorMsg;
   }
 };
 </script>
@@ -44,13 +85,18 @@ const handleLogout = async () => {
         </div>
       </div>
     </header>
-    
+
     <main class="dashboard-content">
       <div class="container">
+        <!-- Error message display -->
+        <div v-if="errorMessage" class="error-message">
+          {{ errorMessage }}
+        </div>
+
         <div v-if="loading" class="loading">
           Loading...
         </div>
-        
+
         <div v-else-if="user" class="dashboard-cards">
           <div class="card">
             <h2>Profile Information</h2>
@@ -69,7 +115,7 @@ const handleLogout = async () => {
               </div>
             </div>
           </div>
-          
+
           <div class="card">
             <h2>Quick Actions</h2>
             <div class="actions">
@@ -77,7 +123,7 @@ const handleLogout = async () => {
               <button class="btn btn-secondary">Change Password</button>
             </div>
           </div>
-          
+
           <div class="card">
             <h2>Recent Activity</h2>
             <p class="empty-state">No recent activity to display.</p>
@@ -142,6 +188,15 @@ const handleLogout = async () => {
   padding: 2rem;
   font-size: 1.2rem;
   color: #666;
+}
+
+.error-message {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+  text-align: center;
 }
 
 .dashboard-cards {
@@ -221,13 +276,13 @@ const handleLogout = async () => {
   .dashboard-cards {
     grid-template-columns: 1fr;
   }
-  
+
   .dashboard-header .container {
     flex-direction: column;
     gap: 1rem;
     align-items: flex-start;
   }
-  
+
   .user-info {
     width: 100%;
     justify-content: space-between;

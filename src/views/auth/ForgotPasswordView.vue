@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../../firebase/config';
+import { handleAuthError, logError } from '../../services/errorLogger';
 
 const email = ref('');
 const errorMessage = ref('');
@@ -12,28 +13,43 @@ const resetPassword = async () => {
   // Reset messages
   errorMessage.value = '';
   successMessage.value = '';
-  
+
   if (!email.value) {
     errorMessage.value = 'Please enter your email address';
+    // Log validation error
+    logError(
+      new Error('Email validation failed for password reset'),
+      'password-reset-validation',
+      { emailProvided: false }
+    );
     return;
   }
-  
+
   try {
     loading.value = true;
+
+    // Log password reset attempt (without sensitive data)
+    console.info(`[PASSWORD-RESET] Attempt for email: ${email.value.substring(0, 3)}...`);
+
+    // Send password reset email
     await sendPasswordResetEmail(auth, email.value);
+
+    // Log successful password reset request
+    console.info(`[PASSWORD-RESET] Reset email sent successfully to: ${email.value.substring(0, 3)}...`);
+
+    // Show success message
     successMessage.value = 'Password reset email sent. Check your inbox.';
     email.value = ''; // Clear the email field
   } catch (error) {
-    console.error('Password reset error:', error);
-    switch (error.code) {
-      case 'auth/invalid-email':
-        errorMessage.value = 'Invalid email address';
-        break;
-      case 'auth/user-not-found':
-        errorMessage.value = 'No account found with this email';
-        break;
-      default:
-        errorMessage.value = 'An error occurred. Please try again';
+    // Use the error handler service to get a user-friendly message
+    errorMessage.value = handleAuthError(error, 'password-reset', {
+      email: email.value,
+      attemptTime: new Date().toISOString()
+    });
+
+    // Log additional details about the error
+    if (error.code === 'auth/user-not-found') {
+      console.warn(`[PASSWORD-RESET] Attempt for non-existent account: ${email.value.substring(0, 3)}...`);
     }
   } finally {
     loading.value = false;
@@ -48,22 +64,22 @@ const resetPassword = async () => {
       <p class="description">
         Enter your email address and we'll send you a link to reset your password.
       </p>
-      
+
       <div v-if="errorMessage" class="error-message">
         {{ errorMessage }}
       </div>
-      
+
       <div v-if="successMessage" class="success-message">
         {{ successMessage }}
       </div>
-      
+
       <form @submit.prevent="resetPassword">
         <div class="form-group">
           <label for="email">Email</label>
-          <input 
-            type="email" 
-            id="email" 
-            v-model="email" 
+          <input
+            type="email"
+            id="email"
+            v-model="email"
             placeholder="Enter your email"
             required
           />
@@ -74,7 +90,7 @@ const resetPassword = async () => {
           </button>
         </div>
       </form>
-      
+
       <div class="auth-links">
         <router-link to="/login">Back to Login</router-link>
       </div>
